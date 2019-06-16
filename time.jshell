@@ -1,0 +1,115 @@
+import java.text.SimpleDateFormat;
+import java.time.*;
+import java.time.format.*;
+import java.time.temporal.*;
+import java.util.Locale;
+import java.util.concurrent.TimeUnit;
+
+
+var now = LocalDateTime.now();
+var lastJavafaktura = now.minusWeeks(3);
+var lastJavafakturaMilis = lastJavafaktura.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+
+//----
+
+var dateFormat = new SimpleDateFormat("yyyy-MM-dd, HH:mm");
+var lastJavafakturaOldWay = dateFormat.parse("2019-05-14, 18:00");
+var todayJavafakturaOldWay = dateFormat.parse("2019-06-04, 18:00");
+
+var diffInMilis = todayJavafakturaOldWay.getTime() - lastJavafakturaOldWay.getTime();
+var daysSinceLastJavafaktura = TimeUnit.DAYS.convert(diffInMilis, TimeUnit.MILLISECONDS);
+
+//-----
+
+var zdt = ZonedDateTime.now();
+
+var atLisbon = zdt.withZoneSameInstant(ZoneId.of("Europe/Lisbon")).plusHours(4).plusMinutes(54);
+
+void printEuropeTimeDiffsFromZdt() {
+    ZoneId.getAvailableZoneIds().stream().filter(s -> s.contains("Europe")).map(z -> ZoneId.of(z)).forEach(s -> System.out.println(zdt.withZoneSameInstant(s)));
+}
+
+void printEuropeTimeDiffsFromLdt() {
+    var now = LocalDateTime.now();
+    ZoneId.getAvailableZoneIds().stream().filter(s -> s.contains("Europe")).map(z -> ZoneId.of(z)).forEach(z -> System.out.println(ZonedDateTime.of(now, ZoneId.systemDefault()).withZoneSameInstant(z)));
+}
+
+var odtLisbon = OffsetDateTime.now(ZoneId.of("Europe/Lisbon"));
+
+//-----------------------------
+// Parsowanie
+//-----------------------------
+
+var dtFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd, HH:mm");
+LocalDateTime.parse("2019-06-04, 18:50", dtFormatter);
+
+LocalDateTime.now().format(dtFormatter);
+
+//-----------------------------
+// TextStyle
+//-----------------------------
+
+void showTextStyle() {
+    DayOfWeek dow = DayOfWeek.TUESDAY;
+    Locale locale = Locale.getDefault(); // Locale.forLanguageTag("pl-PL")
+    dow.getDisplayName(TextStyle.FULL, locale);
+    dow.getDisplayName(TextStyle.NARROW, locale);
+    dow.getDisplayName(TextStyle.SHORT, locale);
+}
+
+//-----------------------------
+// TemporalAdjusters
+//-----------------------------
+
+now.with(TemporalAdjusters.firstDayOfMonth());
+now.with(TemporalAdjusters.firstInMonth(DayOfWeek.MONDAY));
+now.with(TemporalAdjusters.lastDayOfMonth());
+now.with(TemporalAdjusters.firstDayOfNextMonth()).getDayOfWeek();
+now.with(TemporalAdjusters.firstDayOfYear()).getDayOfWeek();
+now.with(TemporalAdjusters.firstDayOfNextYear());
+
+Temporal nextBloodDonation(Temporal in) {
+    var input = LocalDate.from(in);
+    var nextDonation = input.plusWeeks(8);
+    if(nextDonation.getDayOfWeek() == DayOfWeek.SATURDAY || nextDonation.getDayOfWeek() == DayOfWeek.SUNDAY) {
+        return nextDonation.with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+    }
+    return nextDonation;
+}
+
+var nextBloodDonationAdjuster = TemporalAdjusters.ofDateAdjuster(in -> {
+    var nextDonation = in.plusWeeks(8);
+    if(nextDonation.getDayOfWeek() == DayOfWeek.SATURDAY || nextDonation.getDayOfWeek() == DayOfWeek.SUNDAY) {
+        return nextDonation.with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+    }
+    return nextDonation;
+});
+
+Temporal nextFriday13(Temporal in) {
+    var friday = LocalDate.from(in).with(TemporalAdjusters.next(DayOfWeek.FRIDAY));
+    if(friday.getDayOfMonth() == 13)
+        return friday;
+    else
+        return nextFriday13(friday);
+}
+
+//-----------------------------
+// Period
+//-----------------------------
+
+var nastepnaJavafaktura = LocalDateTime.of(2019,06,04,18,00).plusWeeks(1);
+
+// sesja https://www.p.lodz.pl/pl/rozklad-roku-akademickiego-20182019 -> 27.06.2019
+var poczatekSesji = LocalDate.parse("27.06.2019", DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+
+var java1 = LocalDate.of(1996,1,23);
+var joda09 = LocalDate.of(2003,12,16);
+var jsr310 = LocalDate.of(2014,3,4);
+var java8 = LocalDate.of(2014,3,18);
+
+Period.between(joda09, java1);
+Period.between(joda09,jsr310).toTotalMonths();
+Period.between(jsr310, java8).getDays();
+Period.between(jsr310, java8);
+
+ChronoUnit.YEARS.between(java1,java8);
